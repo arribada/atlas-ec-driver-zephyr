@@ -1,0 +1,4 @@
+config PHSENSOR
+    bool "Enable PHSENSOR"
+    default y
+    depends on DT_HAS_ZEPHYR_PHSENSOR_ENABLED
