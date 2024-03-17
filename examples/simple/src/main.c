@@ -3,6 +3,7 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/logging/log.h>
+#include <oemec.h>
 
 LOG_MODULE_REGISTER(simple_app);
 
@@ -24,7 +25,7 @@ int main(void)
 			break;
 		}
 		else { // read channels
-			rc = sensor_channel_get(dev, SENSOR_CHAN_PRESS, &conductivity);
+			rc = sensor_channel_get(dev, SENSOR_CHAN_OEMEC_CONDUCTIVITY, &conductivity);
 		        LOG_INF("Conductivity value %f", sensor_value_to_double(&conductivity));
 		}
 		k_msleep(2000);
