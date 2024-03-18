@@ -96,12 +96,31 @@ static int oemec_sample_fetch(const struct device *dev, enum sensor_channel chan
 {
 	LOG_INF("Fetching samples");	
 	/* Initiate sensor read */
-	uint8_t devicetype_firmware[2]={0,0};
-	oemec_read_regs(dev,OEMEC_DEVICE_TYPE,&devicetype_firmware,sizeof(devicetype_firmware));
-	LOG_INF("Device type : %d",devicetype_firmware[0]);
-	LOG_INF("FW version  : %d", devicetype_firmware[1]);
+
+	/* uint8_t devicetype_firmware[2]={0,0}; */
+	/* oemec_read_regs(dev,OEMEC_DEVICE_TYPE,&devicetype_firmware,sizeof(devicetype_firmware)); */
+	/* LOG_INF("Device type : %d",devicetype_firmware[0]); */
+	/* LOG_INF("FW version  : %d", devicetype_firmware[1]); */
+
 	/* Get the values */
-	/* oemec_read_regs(); */
+
+	uint8_t sensor_values[4]={1,2,3,4};
+	unsigned long sensor_values_long=0;
+	float sensor_values_float;
+	oemec_read_regs(dev,OEMEC_SENSOR_MSB,&sensor_values,sizeof(sensor_values));
+
+	sensor_values_long += sensor_values[0] << 24;
+	sensor_values_long += sensor_values[1] << 16;
+	sensor_values_long += sensor_values[2] << 8;
+	sensor_values_long += sensor_values[3];
+
+	sensor_values_float = (float)sensor_values_long;
+	sensor_values_float = sensor_values_float/100;
+	
+	LOG_INF("Sensor values as 4 regs :%x %x %x %x",sensor_values[0],sensor_values[1],sensor_values[2],sensor_values[3]);
+	LOG_INF("Sensor value as long %lu",sensor_values_long);
+	LOG_INF("Sensor value as float %f",sensor_values_float);
+	
 	return 0;
 }
 static int oemec_channel_get(const struct device *dev, enum sensor_channel chan,
