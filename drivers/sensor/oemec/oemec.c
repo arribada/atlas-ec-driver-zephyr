@@ -60,9 +60,48 @@ struct oemec_data {
 	float sample;
 };
 
+static int oemec_read_regs(const struct device *dev, uint8_t addr, void *buf, size_t len)
+{
+	const struct oemec_config *config = dev->config;
+	int err;
+
+	err = i2c_write_read_dt(&config->bus, &addr, sizeof(addr), buf, len);
+	if (err != 0) {
+		LOG_ERR("failed to read reg addr 0x%02x, len %d (err %d)", addr, len, err);
+		return err;
+	}
+
+	return 0;
+}
+
+static int oemec_write_regs(const struct device *dev, uint8_t addr, void *buf, size_t len)
+{
+	const struct oemec_config *config = dev->config;
+	uint8_t block[sizeof(addr) + len];
+	int err;
+
+	block[0] = addr;
+	memcpy(&block[1], buf, len);
+
+	err = i2c_write_dt(&config->bus, block, sizeof(block));
+	if (err != 0) {
+		LOG_ERR("failed to write reg addr 0x%02x, len %d (err %d)", addr, len, err);
+		return err;
+	}
+
+	return 0;
+}
+
 static int oemec_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
-	LOG_INF("Fetching samples");
+	LOG_INF("Fetching samples");	
+	/* Initiate sensor read */
+	uint8_t devicetype_firmware[2]={0,0};
+	oemec_read_regs(dev,OEMEC_DEVICE_TYPE,&devicetype_firmware,sizeof(devicetype_firmware));
+	LOG_INF("Device type : %d",devicetype_firmware[0]);
+	LOG_INF("FW version  : %d", devicetype_firmware[1]);
+	/* Get the values */
+	/* oemec_read_regs(); */
 	return 0;
 }
 static int oemec_channel_get(const struct device *dev, enum sensor_channel chan,
