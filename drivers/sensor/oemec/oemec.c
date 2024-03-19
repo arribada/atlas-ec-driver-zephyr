@@ -10,6 +10,7 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/device.h>
+#include "oemec.h"
 
 LOG_MODULE_REGISTER(OEMEC, CONFIG_SENSOR_LOG_LEVEL);
 
@@ -123,6 +124,17 @@ static int oemec_sample_fetch(const struct device *dev, enum sensor_channel chan
 	
 	return 0;
 }
+
+static int oemec_set_probe()
+{
+	return 0;
+}
+
+static int oemec_set_calibration()
+{
+	return 0;
+}
+
 static int oemec_channel_get(const struct device *dev, enum sensor_channel chan,
 			     struct sensor_value *val)
 {
@@ -130,9 +142,33 @@ static int oemec_channel_get(const struct device *dev, enum sensor_channel chan,
 	return 0;
 }
 
+static int oemec_attr_get(const struct device *dev, enum sensor_channel chan,
+			   enum sensor_attribute attr, struct sensor_value *val)
+{
+	return 0;
+}
+
+static int oemec_attr_set(const struct device *dev, enum sensor_channel chan,
+			  enum sensor_attribute attr, const struct sensor_value *val)
+{
+	switch(attr){
+	case SENSOR_ATTR_CALIBRATION:
+		return oemec_set_calibration();
+	case SENSOR_ATTR_OEMEC_PROBE:
+		return oemec_set_probe();
+	default:
+		LOG_ERR("Attribute not supported");
+		return -ENOTSUP;
+		
+	}
+	return 0;
+}
+
 static const struct sensor_driver_api oemec_driver_api = {
 	.sample_fetch = oemec_sample_fetch,
 	.channel_get = oemec_channel_get,
+	.attr_set = oemec_attr_set,
+	.attr_get = oemec_attr_get,
 };
 
 static int oemec_init(const struct device *dev)
