@@ -52,139 +52,156 @@ LOG_MODULE_REGISTER(OEMEC, CONFIG_SENSOR_LOG_LEVEL);
 #define OEMEC_SALINITY_LSB        0x23
 
 struct oemec_config {
-	struct i2c_dt_spec bus;
-	/* uint8_t resolution; */
-	/* uint8_t mtreg; */
+  struct i2c_dt_spec bus;
+  /* uint8_t resolution; */
+  /* uint8_t mtreg; */
 };
 
 struct oemec_data {
-	float sample;
+  float sample;
 };
 
 static int oemec_read_regs(const struct device *dev, uint8_t addr, void *buf, size_t len)
 {
-	const struct oemec_config *config = dev->config;
-	int err;
+  const struct oemec_config *config = dev->config;
+  int err;
 
-	err = i2c_write_read_dt(&config->bus, &addr, sizeof(addr), buf, len);
-	if (err != 0) {
-		LOG_ERR("failed to read reg addr 0x%02x, len %d (err %d)", addr, len, err);
-		return err;
-	}
+  err = i2c_write_read_dt(&config->bus, &addr, sizeof(addr), buf, len);
+  if (err != 0) {
+    LOG_ERR("failed to read reg addr 0x%02x, len %d (err %d)", addr, len, err);
+    return err;
+  }
 
-	return 0;
+  return 0;
 }
 
 static int oemec_write_regs(const struct device *dev, uint8_t addr, void *buf, size_t len)
 {
-	const struct oemec_config *config = dev->config;
-	uint8_t block[sizeof(addr) + len];
-	int err;
+  const struct oemec_config *config = dev->config;
+  uint8_t block[sizeof(addr) + len];
+  int err;
 
-	block[0] = addr;
-	memcpy(&block[1], buf, len);
+  block[0] = addr;
+  memcpy(&block[1], buf, len);
 
-	err = i2c_write_dt(&config->bus, block, sizeof(block));
-	if (err != 0) {
-		LOG_ERR("failed to write reg addr 0x%02x, len %d (err %d)", addr, len, err);
-		return err;
-	}
+  err = i2c_write_dt(&config->bus, block, sizeof(block));
+  if (err != 0) {
+    LOG_ERR("failed to write reg addr 0x%02x, len %d (err %d)", addr, len, err);
+    return err;
+  }
 
-	return 0;
+  return 0;
 }
 
 static int oemec_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
-	LOG_INF("Fetching samples");	
-	/* Initiate sensor read */
+  LOG_INF("Fetching samples");
+  /* Initiate sensor read */
 
-	/* uint8_t devicetype_firmware[2]={0,0}; */
-	/* oemec_read_regs(dev,OEMEC_DEVICE_TYPE,&devicetype_firmware,sizeof(devicetype_firmware)); */
-	/* LOG_INF("Device type : %d",devicetype_firmware[0]); */
-	/* LOG_INF("FW version  : %d", devicetype_firmware[1]); */
+  /* uint8_t devicetype_firmware[2]={0,0}; */
+  /* oemec_read_regs(dev,OEMEC_DEVICE_TYPE,&devicetype_firmware,sizeof(devicetype_firmware)); */
+  /* LOG_INF("Device type : %d",devicetype_firmware[0]); */
+  /* LOG_INF("FW version  : %d", devicetype_firmware[1]); */
 
-	/* Get the values */
+  /* Get the values */
 
-	uint8_t sensor_values[4]={1,2,3,4};
-	unsigned long sensor_values_long=0;
-	float sensor_values_float;
-	oemec_read_regs(dev,OEMEC_SENSOR_MSB,&sensor_values,sizeof(sensor_values));
+  uint8_t sensor_values[4]={1,2,3,4};
+  unsigned long sensor_values_long=0;
+  float sensor_values_float;
+  oemec_read_regs(dev,OEMEC_SENSOR_MSB,&sensor_values,sizeof(sensor_values));
 
-	sensor_values_long += sensor_values[0] << 24;
-	sensor_values_long += sensor_values[1] << 16;
-	sensor_values_long += sensor_values[2] << 8;
-	sensor_values_long += sensor_values[3];
+  sensor_values_long += sensor_values[0] << 24;
+  sensor_values_long += sensor_values[1] << 16;
+  sensor_values_long += sensor_values[2] << 8;
+  sensor_values_long += sensor_values[3];
 
-	sensor_values_float = (float)sensor_values_long;
-	sensor_values_float = sensor_values_float/100;
-	
-	LOG_INF("Sensor values as 4 regs :%x %x %x %x",sensor_values[0],sensor_values[1],sensor_values[2],sensor_values[3]);
-	LOG_INF("Sensor value as long %lu",sensor_values_long);
-	LOG_INF("Sensor value as float %f",sensor_values_float);
-	
-	return 0;
+  sensor_values_float = (float)sensor_values_long;
+  sensor_values_float = sensor_values_float/100;
+
+  LOG_INF("Sensor values as 4 regs :%x %x %x %x",sensor_values[0],sensor_values[1],sensor_values[2],sensor_values[3]);
+  LOG_INF("Sensor value as long %lu",sensor_values_long);
+  LOG_INF("Sensor value as float %f",sensor_values_float);
+
+  return 0;
 }
 
-static int oemec_set_probe()
+static int oemec_set_probe(const struct device *dev,const struct sensor_value *val)
 {
-	return 0;
+  int t = val->val1;
+  uint8_t LSB = ((uint16_t)t & 0x00FF);
+  uint8_t MSB = (((uint16_t)t & 0xFF00) >>8);
+  LOG_INF("Setting probe regs to %d i.e. | %02x | %02x",t,MSB,LSB);
+  oemec_write_regs(dev,OEMEC_PROBE_MSB,&MSB,sizeof(MSB));
+  oemec_write_regs(dev,OEMEC_PROBE_LSB,&LSB,sizeof(LSB));
+  return 0;
 }
 
-static int oemec_set_calibration()
+static int oemec_set_calibration(const struct device *dev, const struct sensor_value *val)
 {
-	return 0;
+  uint32_t t = (uint32_t)val->val1;
+
+  uint8_t MSB = ((t & 0xFF000000) >>24);
+  uint8_t highbyte = ((t & 0x00FF0000) >>16);
+  uint8_t lowbyte = ((t & 0x0000FF00) >>8);
+  uint8_t LSB = (t & 0x000000FF);
+  LOG_INF("Setting calibration regs to %d i.e. | %02x | %02x | %02x | %02x",t,MSB,highbyte,lowbyte,LSB);
+  oemec_write_regs(dev,OEMEC_CALIB_MSB,&MSB,sizeof(MSB));
+  oemec_write_regs(dev,OEMEC_CALIB_HIGH_BYTE,&highbyte,sizeof(highbyte));
+  oemec_write_regs(dev,OEMEC_CALIB_LOW_BYTE,&lowbyte,sizeof(lowbyte));
+  oemec_write_regs(dev,OEMEC_CALIB_LSB,&LSB,sizeof(LSB));
+  return 0;
 }
 
 static int oemec_channel_get(const struct device *dev, enum sensor_channel chan,
-			     struct sensor_value *val)
+           struct sensor_value *val)
 {
-	LOG_INF("Fetching value for channel %d", chan);
-	return 0;
+  LOG_INF("Fetching value for channel %d", chan);
+  return 0;
 }
 
 static int oemec_attr_get(const struct device *dev, enum sensor_channel chan,
-			   enum sensor_attribute attr, struct sensor_value *val)
+         enum sensor_attribute attr, struct sensor_value *val)
 {
-	return 0;
+  return 0;
 }
 
 static int oemec_attr_set(const struct device *dev, enum sensor_channel chan,
-			  enum sensor_attribute attr, const struct sensor_value *val)
+        enum sensor_attribute attr, const struct sensor_value *val)
 {
-	switch(attr){
-	case SENSOR_ATTR_CALIBRATION:
-		return oemec_set_calibration();
-	case SENSOR_ATTR_OEMEC_PROBE:
-		return oemec_set_probe();
-	default:
-		LOG_ERR("Attribute not supported");
-		return -ENOTSUP;
-		
-	}
-	return 0;
+  switch(attr){
+  case SENSOR_ATTR_CALIBRATION:
+    return oemec_set_calibration(dev,val);
+  case SENSOR_ATTR_OEMEC_PROBE:
+    return oemec_set_probe(dev,val);
+  default:
+    LOG_ERR("Attribute not supported");
+    return -ENOTSUP;
+
+  }
+  return 0;
 }
 
 static const struct sensor_driver_api oemec_driver_api = {
-	.sample_fetch = oemec_sample_fetch,
-	.channel_get = oemec_channel_get,
-	.attr_set = oemec_attr_set,
-	.attr_get = oemec_attr_get,
+  .sample_fetch = oemec_sample_fetch,
+  .channel_get = oemec_channel_get,
+  .attr_set = oemec_attr_set,
+  .attr_get = oemec_attr_get,
 };
 
 static int oemec_init(const struct device *dev)
 {
-	LOG_DBG("Inside oemec_init");
-	return 0;
+  LOG_DBG("Inside oemec_init");
+  return 0;
 }
 
 #define DEFINE_OEMEC(inst)                                                                         \
-	static struct oemec_data oemec_data_##inst;                                                \
+  static struct oemec_data oemec_data_##inst;                                                \
                                                                                                    \
-	static const struct oemec_config oemec_config_##inst = {                                   \
-		.bus = I2C_DT_SPEC_INST_GET(inst),                                                 \
-	};                                                                                         \
-	SENSOR_DEVICE_DT_INST_DEFINE(inst, oemec_init, NULL, &oemec_data_##inst,                   \
-				     &oemec_config_##inst, POST_KERNEL,                            \
-				     CONFIG_SENSOR_INIT_PRIORITY, &oemec_driver_api);
+  static const struct oemec_config oemec_config_##inst = {                                   \
+    .bus = I2C_DT_SPEC_INST_GET(inst),                                                 \
+  };                                                                                         \
+  SENSOR_DEVICE_DT_INST_DEFINE(inst, oemec_init, NULL, &oemec_data_##inst,                   \
+             &oemec_config_##inst, POST_KERNEL,                            \
+             CONFIG_SENSOR_INIT_PRIORITY, &oemec_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(DEFINE_OEMEC)
