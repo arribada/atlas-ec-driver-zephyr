@@ -16,17 +16,24 @@ int main(void)
     LOG_INF("No device found");
     return 0;
   }
+
   LOG_INF("Setting attributes");
+
   struct sensor_value probe = { // K=4.56
     .val1 = 456,
   };
-
   rc = sensor_attr_set(dev,SENSOR_CHAN_OEMEC_CONDUCTIVITY,SENSOR_ATTR_OEMEC_PROBE,&probe);
   LOG_INF("Set probe returned %d",rc);
-  struct sensor_value calib = { // K=150,000.00uS
+
+  struct sensor_value calib_l = { // K=150,000.00uS
     .val1 = 15000000, //x 100
   };
-  rc = sensor_attr_set(dev,SENSOR_CHAN_OEMEC_CONDUCTIVITY,SENSOR_ATTR_CALIBRATION,&calib);
+  rc = sensor_attr_set(dev,SENSOR_CHAN_OEMEC_CONDUCTIVITY,SENSOR_ATTR_OEMEC_CALIBRATION_DUAL_LOW,&calib_l);
+
+  struct sensor_value calib_h = { // K=150,000.00uS
+    .val1 = 15000000, //x 100
+  };
+  rc = sensor_attr_set(dev,SENSOR_CHAN_OEMEC_CONDUCTIVITY,SENSOR_ATTR_OEMEC_CALIBRATION_DUAL_HIGH,&calib_h);
 
   struct sensor_value conductivity;
   while (true) {

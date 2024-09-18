@@ -51,6 +51,16 @@ LOG_MODULE_REGISTER(OEMEC, CONFIG_SENSOR_LOG_LEVEL);
 #define OEMEC_SALINITY_LOW_BYTE   0x22
 #define OEMEC_SALINITY_LSB        0x23
 
+enum CALIB_TYPES {
+  CALIB_CLEAR,
+  CALIB_DRY,
+  CALIB_SINGLE,
+  CALIB_DUAL_LOW,
+  CALIB_DUAL_HIGH
+};
+
+static int oemec_set_calibration(const struct device *dev, const struct sensor_value *val,enum CALIB_TYPES type);
+
 struct oemec_config {
   struct i2c_dt_spec bus;
   /* uint8_t resolution; */
@@ -136,19 +146,48 @@ static int oemec_set_probe(const struct device *dev,const struct sensor_value *v
   return 0;
 }
 
-static int oemec_set_calibration(const struct device *dev, const struct sensor_value *val)
+static int oemec_set_calibration(const struct device *dev, const struct sensor_value *val,enum CALIB_TYPES type)
 {
-  uint32_t t = (uint32_t)val->val1;
+  if(type!=CALIB_CLEAR){ // if we are clearing, no need to write anything to calib value register
 
-  uint8_t MSB = ((t & 0xFF000000) >>24);
-  uint8_t highbyte = ((t & 0x00FF0000) >>16);
-  uint8_t lowbyte = ((t & 0x0000FF00) >>8);
-  uint8_t LSB = (t & 0x000000FF);
-  LOG_INF("Setting calibration regs to %d i.e. | %02x | %02x | %02x | %02x",t,MSB,highbyte,lowbyte,LSB);
-  oemec_write_regs(dev,OEMEC_CALIB_MSB,&MSB,sizeof(MSB));
-  oemec_write_regs(dev,OEMEC_CALIB_HIGH_BYTE,&highbyte,sizeof(highbyte));
-  oemec_write_regs(dev,OEMEC_CALIB_LOW_BYTE,&lowbyte,sizeof(lowbyte));
-  oemec_write_regs(dev,OEMEC_CALIB_LSB,&LSB,sizeof(LSB));
+    uint32_t t = (uint32_t)val->val1;
+
+    uint8_t MSB = ((t & 0xFF000000) >>24);
+    uint8_t highbyte = ((t & 0x00FF0000) >>16);
+    uint8_t lowbyte = ((t & 0x0000FF00) >>8);
+    uint8_t LSB = (t & 0x000000FF);
+    LOG_INF("Setting calibration regs to %d i.e. | %02x | %02x | %02x | %02x",t,MSB,highbyte,lowbyte,LSB);
+    oemec_write_regs(dev,OEMEC_CALIB_MSB,&MSB,sizeof(MSB));
+    oemec_write_regs(dev,OEMEC_CALIB_HIGH_BYTE,&highbyte,sizeof(highbyte));
+    oemec_write_regs(dev,OEMEC_CALIB_LOW_BYTE,&lowbyte,sizeof(lowbyte));
+    oemec_write_regs(dev,OEMEC_CALIB_LSB,&LSB,sizeof(LSB));
+  }
+  uint8_t cr_value;
+  switch (type){
+  case CALIB_CLEAR:
+    cr_value = 1;
+    break;
+  case CALIB_DRY:
+    cr_value = 2;
+    break;
+  case CALIB_SINGLE:
+    cr_value = 3;
+    break;
+  case CALIB_DUAL_LOW:
+    cr_value = 4;
+    break;
+  case CALIB_DUAL_HIGH:
+    cr_value = 6;
+    break;
+  default:
+    LOG_ERR("Unexpected calibration type!");
+    return -1;
+  }
+  // write to request register
+  oemec_write_regs(dev,OEMEC_CALIB_REQUEST,&cr_value,sizeof(cr_value));
+
+  // todo read from calibration confirmation register
+
   return 0;
 }
 
@@ -165,18 +204,27 @@ static int oemec_attr_get(const struct device *dev, enum sensor_channel chan,
   return 0;
 }
 
+
 static int oemec_attr_set(const struct device *dev, enum sensor_channel chan,
         enum sensor_attribute attr, const struct sensor_value *val)
 {
-  switch(attr){
-  case SENSOR_ATTR_CALIBRATION:
-    return oemec_set_calibration(dev,val);
+
+  switch((int)attr){ //typecast to int so that we can use our overloaded enum w/o compiler warnings
+  case SENSOR_ATTR_OEMEC_CALIBRATION_CLEAR:
+    return oemec_set_calibration(dev,NULL,CALIB_CLEAR);
+  case SENSOR_ATTR_OEMEC_CALIBRATION_DRY:
+    return oemec_set_calibration(dev,val,CALIB_DRY);
+  case SENSOR_ATTR_OEMEC_CALIBRATION_SINGLE:
+    return oemec_set_calibration(dev,val,CALIB_SINGLE);
+  case SENSOR_ATTR_OEMEC_CALIBRATION_DUAL_LOW:
+    return oemec_set_calibration(dev,val,CALIB_DUAL_LOW);
+  case SENSOR_ATTR_OEMEC_CALIBRATION_DUAL_HIGH:
+    return oemec_set_calibration(dev,val,CALIB_DUAL_HIGH);
   case SENSOR_ATTR_OEMEC_PROBE:
     return oemec_set_probe(dev,val);
   default:
     LOG_ERR("Attribute not supported");
     return -ENOTSUP;
-
   }
   return 0;
 }
