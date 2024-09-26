@@ -177,7 +177,7 @@ static int oemec_set_calibration(const struct device *dev, const struct sensor_v
     cr_value = 4;
     break;
   case CALIB_DUAL_HIGH:
-    cr_value = 6;
+    cr_value = 5;
     break;
   default:
     LOG_ERR("Unexpected calibration type!");
