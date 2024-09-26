@@ -5,6 +5,8 @@ extern "C" {
 
 enum sensor_channel_oemec{
     SENSOR_CHAN_OEMEC_CONDUCTIVITY = SENSOR_CHAN_PRIV_START,
+    SENSOR_CHAN_OEMEC_TDS,
+    SENSOR_CHAN_OEMEC_SALINITY,
 };
 
 enum sensor_attribute_oemec{

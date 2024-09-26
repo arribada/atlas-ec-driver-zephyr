@@ -118,7 +118,16 @@ static int oemec_sample_fetch(const struct device *dev, enum sensor_channel chan
   uint8_t sensor_values[4]={1,2,3,4};
   unsigned long sensor_values_long=0;
   float sensor_values_float;
-  oemec_read_regs(dev,OEMEC_SENSOR_MSB,&sensor_values,sizeof(sensor_values));
+  if(chan==SENSOR_CHAN_OEMEC_TDS){
+    oemec_read_regs(dev,OEMEC_TDS_MSB,&sensor_values,sizeof(sensor_values));
+  }
+  else if(chan == SENSOR_CHAN_OEMEC_SALINITY){
+    oemec_read_regs(dev,OEMEC_SALINITY_MSB,&sensor_values,sizeof(sensor_values));
+  }
+  else{
+    oemec_read_regs(dev,OEMEC_SENSOR_MSB,&sensor_values,sizeof(sensor_values));
+  }
+
 
   sensor_values_long += sensor_values[0] << 24;
   sensor_values_long += sensor_values[1] << 16;

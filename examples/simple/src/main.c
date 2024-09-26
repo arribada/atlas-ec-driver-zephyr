@@ -92,7 +92,7 @@ int main(void)
 
   struct sensor_value conductivity;
   /* while (true) { */
-  /*   rc = sensor_sample_fetch(dev); */
+  /*   rc = sensor_sample_fetch_chan(dev,SENSOR_CHAN_OEMEC_CONDUCTIVITY); */
   /*   if (rc != 0 ){ */
   /*           LOG_ERR("OEMEC failed: %d",rc); */
   /*     break; */
